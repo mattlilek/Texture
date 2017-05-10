@@ -208,6 +208,8 @@ static NSString * const kReuseIdentifier = @"_ASCollectionReuseIdentifier";
     unsigned int didChangeCollectionViewDataSource:1;
     unsigned int didChangeCollectionViewDelegate:1;
   } _layoutInspectorFlags;
+
+  NSMutableSet<UITouch *> *_activeTouches;
 }
 
 @end
@@ -1938,5 +1940,40 @@ static NSString * const kReuseIdentifier = @"_ASCollectionReuseIdentifier";
 }
 
 #endif
+
+#pragma mark - Awful Fusion shipping hack
+
+// This should only be here temporarily!
+// See https://jira.nyt.net/browse/IOS-1866 for details on why this is necessary.
+
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(nullable UIEvent *)event
+{
+  if (!_activeTouches) {
+    _activeTouches = [[NSMutableSet alloc] init];
+  } else if (_activeTouches.count > 0) {
+    [super touchesCancelled:[_activeTouches copy] withEvent:nil];
+    [_activeTouches removeAllObjects];
+  }
+  [_activeTouches setSet:touches];
+
+  [super touchesBegan:touches withEvent:event];
+}
+
+- (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(nullable UIEvent *)event
+{
+  [super touchesMoved:touches withEvent:event];
+}
+
+- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(nullable UIEvent *)event
+{
+  [_activeTouches minusSet:touches];
+  [super touchesEnded:touches withEvent:event];
+}
+
+- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(nullable UIEvent *)event
+{
+  [_activeTouches minusSet:touches];
+  [super touchesCancelled:touches withEvent:event];
+}
 
 @end
